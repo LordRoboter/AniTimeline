@@ -1,0 +1,31 @@
+query TestQuery {
+    Media(id: 1215) {
+        id
+        title {
+            romaji
+        }
+    }
+}
+
+query AnimeCharacters ($id: Int) {
+  Media (id: $id) {
+    id
+    title {
+      romaji
+    }
+    characters {
+      nodes {
+        id
+        age
+        name {
+          full
+        }
+        favourites
+        gender
+        image {
+          large
+        }
+      }
+    }
+  }
+}
