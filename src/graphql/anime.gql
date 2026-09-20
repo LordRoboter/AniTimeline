@@ -1,0 +1,26 @@
+query TimelineRelevantAnimeEntries ($username: String, $type: MediaType) {
+  MediaListCollection (userName: $username, type: $type, status_not_in: [PLANNING]) {
+    lists {
+      isCustomList
+      entries {
+        status
+        media {
+          id
+          title {
+            romaji
+          }
+        }
+        completedAt {
+          day
+          month
+          year  
+        }
+        startedAt {
+          day
+          month
+          year
+        }
+      }
+    }
+  }
+}

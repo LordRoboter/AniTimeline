@@ -1,54 +1,42 @@
 <script lang="ts">
 	import ChoiceCard from '$lib/components/rank/ChoiceCard.svelte';
-	import { AnimeCharactersDocument } from '../../../graphql/generated';
-	import { anilist } from '$lib/anilist/client';
+	import { loadCharacters } from '$lib/code/ranking/tournament';
 
-	export async function load() {
-		const data = await anilist(AnimeCharactersDocument, {
-			id: 1215
-		});
+	let characters = $state<Awaited<ReturnType<typeof loadCharacters>>>([]);
+	let loading = $state(false);
+	let error = null;
 
-		console.log(data.Media);
+	async function load() {
+		loading = true;
 
-		return {
-			media: data.Media
-		};
+		try {
+			characters = await loadCharacters();
+		} finally {
+			loading = false;
+		}
 	}
+
+	load();
 </script>
 
-<div class="mainWrapper">
-	<div class="titleWrapper">
-		<h1>Who is better?</h1>
-		<button onclick={load}>load</button>
+<div class="min-h-screen w-full p-8">
+	<div class="flex w-full flex-col items-center justify-center">
+		<h1 class="text-center text-3xl font-bold text-white">Who is better?</h1>
+
+		<button
+			class="mt-4 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
+			onclick={load}
+		>
+			Load
+		</button>
 	</div>
-	<div class="choicesWrapper">
-		<ChoiceCard title="Ao" image="/images/test.jpg" />
-		<ChoiceCard title="Kaoruko" image="/images/test2.jpg" />
+
+	<div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+		{#each characters as character (character.id)}
+			<ChoiceCard
+				title={character.name?.full ?? 'Unknown'}
+				image={character.image?.large ?? '/images/test.jpg'}
+			/>
+		{/each}
 	</div>
 </div>
-
-<style>
-	.titleWrapper {
-		width: 100%;
-		align-items: center;
-		justify-content: center;
-		font-family: 'Open Sans', sans-serif;
-		font-optical-sizing: auto;
-		color: white;
-	}
-	h1 {
-		text-align: center;
-		font-size: 2rem;
-	}
-	.mainWrapper {
-		width: 100%;
-		height: 100%;
-		padding: 2rem;
-		box-sizing: border-box;
-	}
-	.choicesWrapper {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-</style>
