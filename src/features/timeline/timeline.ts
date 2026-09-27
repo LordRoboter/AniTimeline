@@ -1,6 +1,6 @@
 import type { WatchedShow } from './type';
 
-type DateParts = {
+export type DateParts = {
 	day: number | null;
 	month: number | null;
 	year: number | null;
@@ -50,3 +50,21 @@ export function dateToX(
 
 	return ((time - start) / (end - start)) * width;
 }
+
+export function timeToX(
+	time: number,
+	start: number,
+	end: number,
+	width: number
+): number {
+	if (start === end) return width / 2;
+
+	return ((time - start) / (end - start)) * width;
+}
+
+export function formatDate(date: { day: number | null; month: number | null; year: number | null } | null) {
+		if (date === null) return 'Unknown';
+		if (!date.year) return 'Unknown';
+
+		return [date.day, date.month, date.year].filter(Boolean).join('/');
+	}

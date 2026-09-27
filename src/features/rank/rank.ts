@@ -1,4 +1,4 @@
-import { AnimeCharactersDocument, type Character } from '../../../../graphql/generated';
+import { AnimeCharactersDocument, type Character } from '../../../graphql/generated';
 import { anilist } from '$lib/anilist/client';
 import { PUBLIC_USE_TEST_DATA } from '$env/static/public';
 import { testCharacters } from '$lib/mock/characters';

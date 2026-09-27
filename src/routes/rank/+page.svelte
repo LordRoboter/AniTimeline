@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ChoiceCard from '$lib/components/rank/ChoiceCard.svelte';
-	import { loadCharacters } from '$lib/code/ranking/tournament';
+	import ChoiceCard from '../../features/rank/components/ChoiceCard.svelte';
+	import { loadCharacters } from '$lib/ranking/tournament';
 
 	let characters = $state<Awaited<ReturnType<typeof loadCharacters>>>([]);
 	let loading = $state(false);

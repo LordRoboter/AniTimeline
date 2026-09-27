@@ -9,6 +9,7 @@ query TimelineRelevantAnimeEntries ($username: String, $type: MediaType) {
           title {
             romaji
           }
+          bannerImage
         }
         completedAt {
           day

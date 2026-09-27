@@ -1,7 +1,7 @@
 import { PUBLIC_USE_TEST_DATA } from '$env/static/public';
 import { anilist } from '$lib/anilist/client';
-import { AnimeCharactersDocument, type Character } from '../../../../graphql/generated';
-import { testCharacters } from '../../mock/characters';
+import { AnimeCharactersDocument, type Character } from '../../../graphql/generated';
+import { testCharacters } from '../../lib/mock/characters';
 
 const useTestData = PUBLIC_USE_TEST_DATA === 'true';
 

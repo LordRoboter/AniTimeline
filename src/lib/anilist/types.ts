@@ -1,9 +1,10 @@
 import type { MediaListStatus } from "../../../graphql/generated";
 
-export type TimelineQueryMediaListType ={
+export type TimelineQueryMediaListType = {
  status: MediaListStatus | null;
  media: {
  id: number;
+ bannerImage: string | null;
  title: {
  romaji: string | null;
  } | null;

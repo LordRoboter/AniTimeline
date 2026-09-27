@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { loadTimelineRelevantMedia } from '$lib/anilist/media';
-	import Timeline from '$lib/components/timeline/Timeline.svelte';
-	import { mapMediaToWatchedShows } from '$lib/timeline/mapper';
-	import type { WatchedShow } from '$lib/timeline/type';
+	import Timeline from '../../features/timeline/components/Timeline.svelte';
+	import { mapMediaToWatchedShows } from '../../features/timeline/mapper';
+	import type { WatchedShow } from '../../features/timeline/type';
 
 	let shows = $state<WatchedShow[]>([]);
 	let loading = $state(true);
