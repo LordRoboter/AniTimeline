@@ -12,7 +12,7 @@ export async function loadTimelineRelevantMedia(): Promise<TimelineQueryMediaLis
     }
 
     const data = await anilist(TimelineRelevantAnimeEntriesDocument, {
-        username: "OuzukaMai",
+        username: "LordRoboter",
         type: MediaType.Anime
     });
 

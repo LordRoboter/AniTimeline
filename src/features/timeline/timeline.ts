@@ -16,6 +16,8 @@ export function dateToTime(date: DateParts | null): number | null {
 	);
 }
 
+const FUTURE_BUFFER_YEARS = 0.5;
+
 export function getTimelineRange(shows: WatchedShow[]) {
 	const dates = shows.flatMap((show) => [
 		dateToTime(show.startDate),
@@ -30,9 +32,12 @@ export function getTimelineRange(shows: WatchedShow[]) {
 		return null;
 	}
 
+	const start = Math.min(...validDates);
+	const end = Math.max(...validDates);
+
 	return {
-		start: Math.min(...validDates),
-		end: Math.max(...validDates)
+		start,
+		end: end + FUTURE_BUFFER_YEARS * 365.25 * 24 * 60 * 60 * 1000
 	};
 }
 

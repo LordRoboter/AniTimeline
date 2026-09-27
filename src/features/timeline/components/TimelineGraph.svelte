@@ -7,6 +7,7 @@
 		x,
 		y,
 		width,
+		barHeight,
 		onSelect,
 		selected
 	}: {
@@ -14,11 +15,11 @@
 		x: number;
 		y: number;
 		width: number;
+		barHeight: number;
 		onSelect: () => void;
 		selected: boolean;
 	} = $props();
 
-	const barHeight = 36;
 	const horizontalPadding = 12;
 
 	const statusColors: Record<StatusType, string> = {
@@ -103,7 +104,7 @@
 	{#if showTitle}
 		<text
 			x={x + horizontalPadding}
-			y={y + 23}
+			y={y + barHeight / 2 + 4}
 			font-size="10"
 			fill="white"
 			class="pointer-events-none"

@@ -14,7 +14,6 @@
 	const maxZoomFactor = 50;
 	const zoomStep = 1.2;
 
-	const minWidth = 20;
 	const maxPixelsPerYear = 25000;
 
 	const originalPixelsPerYear = $derived.by(() => {
@@ -32,12 +31,29 @@
 	let zoomFactor = $state(1.0);
 	const pixelsPerYear = $derived(zoomFactor * originalPixelsPerYear);
 
-	const minRowHeight = 44;
+	const minVerticalZoom = 0.5;
+	const maxVerticalZoom = 3;
+	const verticalZoomStep = 1.2;
+
+	let verticalZoomFactor = $state(1);
+
+	const minRowHeight = 34;
 	const maxRowHeight = 80;
-	const axisHeight = 60;
+	//const axisHeight = 60;
 	const bottomPadding = 20;
-	const rowHeight = 54;
-	const barHeight = 36;
+	const fittedRowHeight = $derived.by(() => {
+		if (!containerHeight || !lanes.length) {
+			return minRowHeight;
+		}
+
+		const availableHeight = containerHeight - paddingTop - bottomPadding;
+
+		return Math.max(minRowHeight, Math.min(maxRowHeight, availableHeight / lanes.length));
+	});
+
+	const rowHeight = $derived(fittedRowHeight * verticalZoomFactor);
+
+	const barHeight = $derived(rowHeight * 0.67);
 	const paddingTop = 60;
 
 	let selectedShow = $state<WatchedShow | null>(null);
@@ -55,22 +71,37 @@
 
 	let container = $state<HTMLDivElement>();
 	let containerWidth = $state(0);
+	let mainContent = $state<HTMLDivElement>();
+	let containerHeight = $state(0);
+
+	const minWidth = $derived(containerWidth);
+	const minHeight = $derived(containerHeight);
 
 	$effect(() => {
-		if (!container) return;
+		if (!container || !mainContent) return;
 
-		const observer = new ResizeObserver(([entry]) => {
+		const containerObserver = new ResizeObserver(([entry]) => {
 			containerWidth = entry.contentRect.width;
 		});
 
-		observer.observe(container);
+		const mainContentObserver = new ResizeObserver(([entry]) => {
+			containerHeight = entry.contentRect.height;
+		});
 
-		return () => observer.disconnect();
+		containerObserver.observe(container);
+		mainContentObserver.observe(mainContent);
+
+		return () => {
+			containerObserver.disconnect();
+			mainContentObserver.disconnect();
+		};
 	});
 
 	const axis = $derived(range ? getTimeAxis(range.start, range.end, pixelsPerYear) : null);
 
-	const height = $derived(Math.max(lanes.length * rowHeight + paddingTop + 20, 150));
+	const height = $derived(
+		Math.max(lanes.length * rowHeight + paddingTop + bottomPadding, minHeight)
+	);
 
 	function getShowPosition(show: WatchedShow) {
 		if (!range) {
@@ -99,9 +130,36 @@
 		zoomFactor = 1;
 	}
 
+	function zoomVerticalIn() {
+		verticalZoomFactor = Math.min(maxVerticalZoom, verticalZoomFactor * verticalZoomStep);
+	}
+
+	function zoomVerticalOut() {
+		verticalZoomFactor = Math.max(minVerticalZoom, verticalZoomFactor / verticalZoomStep);
+	}
+
+	function resetVerticalZoom() {
+		verticalZoomFactor = 1;
+	}
+
 	function handleWheel(event: WheelEvent) {
 		event.preventDefault();
 
+		if (!container) return;
+
+		if (event.ctrlKey || event.metaKey) {
+			handleVerticalZoom(event);
+			return;
+		}
+		if (event.altKey) {
+			handleHorizontalZoom(event);
+			return;
+		}
+		handleHorizontalZoom(event);
+		handleVerticalZoom(event);
+	}
+
+	function handleHorizontalZoom(event: WheelEvent) {
 		if (!container) return;
 
 		const oldPixelsPerYear = pixelsPerYear;
@@ -115,23 +173,51 @@
 
 		if (newZoomFactor === zoomFactor) return;
 
-		// Mouse position inside the visible viewport
 		const rect = container.getBoundingClientRect();
 		const mouseX = event.clientX - rect.left;
-
-		// Position in the timeline's virtual coordinate system
 		const timelineX = container.scrollLeft + mouseX;
+
+		const newPixelsPerYear = newZoomFactor * originalPixelsPerYear;
 
 		zoomFactor = newZoomFactor;
 
-		// Keep the point underneath the mouse stationary
 		requestAnimationFrame(() => {
 			if (!container) return;
 
-			const newPixelsPerYear = pixelsPerYear;
 			const scale = newPixelsPerYear / oldPixelsPerYear;
 
 			container.scrollLeft = timelineX * scale - mouseX;
+		});
+	}
+
+	function handleVerticalZoom(event: WheelEvent) {
+		if (!container) return;
+
+		const oldRowHeight = rowHeight;
+
+		const rect = container.getBoundingClientRect();
+		const mouseY = event.clientY - rect.top;
+
+		// Position in the virtual timeline coordinate system
+		const timelineY = container.scrollTop + mouseY;
+
+		const direction = event.deltaY < 0 ? 1 : -1;
+
+		const newZoomFactor =
+			direction > 0
+				? Math.min(maxVerticalZoom, verticalZoomFactor * verticalZoomStep)
+				: Math.max(minVerticalZoom, verticalZoomFactor / verticalZoomStep);
+
+		if (newZoomFactor === verticalZoomFactor) return;
+
+		verticalZoomFactor = newZoomFactor;
+
+		requestAnimationFrame(() => {
+			if (!container) return;
+
+			const scale = rowHeight / oldRowHeight;
+
+			container.scrollTop = timelineY * scale - mouseY;
 		});
 	}
 
@@ -139,8 +225,12 @@
 	let didDrag = $state(false);
 
 	let isPointerDown = false;
+
 	let dragStartX = 0;
+	let dragStartY = 0;
+
 	let dragStartScrollLeft = 0;
+	let dragStartScrollTop = 0;
 
 	function handlePointerDown(event: PointerEvent) {
 		if (!container || event.button !== 0) return;
@@ -150,22 +240,27 @@
 		didDrag = false;
 
 		dragStartX = event.clientX;
+		dragStartY = event.clientY;
+
 		dragStartScrollLeft = container.scrollLeft;
+		dragStartScrollTop = container.scrollTop;
 	}
 
 	function handlePointerMove(event: PointerEvent) {
 		if (!container || !isPointerDown) return;
 
 		const deltaX = event.clientX - dragStartX;
+		const deltaY = event.clientY - dragStartY;
 
 		if (!isDragging) {
-			if (Math.abs(deltaX) < 5) return;
+			if (Math.hypot(deltaX, deltaY) < 5) return;
 
 			isDragging = true;
 			didDrag = true;
 		}
 
 		container.scrollLeft = dragStartScrollLeft - deltaX;
+		container.scrollTop = dragStartScrollTop - deltaY;
 	}
 
 	function handlePointerUp() {
@@ -174,8 +269,6 @@
 		isPointerDown = false;
 		isDragging = false;
 
-		// Keep this true until the click event generated by pointerup
-		// has been processed.
 		if (didDrag) {
 			requestAnimationFrame(() => {
 				didDrag = false;
@@ -195,47 +288,16 @@
 		<p>No timeline data available.</p>
 	{:else}
 		<!-- Toolbar -->
-		<div class="flex shrink-0 items-center gap-2">
-			<button
-				type="button"
-				class="rounded border px-3 py-2 text-sm hover:bg-gray-100"
-				onclick={zoomOut}
-				disabled={pixelsPerYear <= minPixelsPerYear}
-			>
-				−
-			</button>
-
-			<span class="min-w-20 text-center text-sm">
-				{Math.round(pixelsPerYear)} px/year
-			</span>
-
-			<button
-				type="button"
-				class="rounded border px-3 py-2 text-sm hover:bg-gray-100"
-				onclick={zoomIn}
-				disabled={pixelsPerYear >= maxPixelsPerYear}
-			>
-				+
-			</button>
-
-			<button
-				type="button"
-				class="ml-2 rounded border px-3 py-2 text-sm hover:bg-gray-100"
-				onclick={resetZoom}
-			>
-				Reset
-			</button>
-		</div>
 
 		<!-- Main content -->
-		<div class="flex min-h-0 h-full min-w-0 flex-1 gap-6">
+		<div bind:this={mainContent} class="flex min-h-0 h-full w-full min-w-0 flex-1 gap-6">
 			<!-- Timeline viewport -->
 			<div
 				bind:this={container}
 				role="region"
 				aria-label="Timeline"
-				class="timeline-scroll min-w-0 flex-1 h-full cursor-grab select-none overflow-x-auto active:cursor-grabbing"
-				style="overscroll-behavior-x: contain;"
+				class="timeline-scroll min-h-0 min-w-0 flex-1 cursor-grab select-none overflow-auto active:cursor-grabbing"
+				style="overscroll-behavior: contain;"
 				onwheel={handleWheel}
 				onpointerdown={handlePointerDown}
 				onpointermove={handlePointerMove}
@@ -255,6 +317,7 @@
 
 							<TimelineGraph
 								{show}
+								{barHeight}
 								x={position.x}
 								width={position.width}
 								{y}
@@ -268,11 +331,80 @@
 						{/each}
 					{/each}
 				</svg>
-			</div>
 
-			{#if selectedShow}
-				<SidePanel {selectedShow} onClose={() => (selectedShow = null)} />
-			{/if}
+				<div
+					class="pointer-events-auto fixed bottom-4 left-4 z-10 flex items-center gap-1 rounded-lg border bg-white/90 p-1 shadow-lg backdrop-blur dark:bg-gray-900/90"
+				>
+					<button
+						type="button"
+						class="h-8 w-8 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+						onclick={zoomOut}
+						disabled={pixelsPerYear <= minPixelsPerYear}
+						aria-label="Zoom out horizontally"
+					>
+						−
+					</button>
+
+					<span class="px-1 text-xs tabular-nums">
+						{Math.round(pixelsPerYear)} px/y
+					</span>
+
+					<button
+						type="button"
+						class="h-8 w-8 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+						onclick={zoomIn}
+						disabled={pixelsPerYear >= maxPixelsPerYear}
+						aria-label="Zoom in horizontally"
+					>
+						+
+					</button>
+
+					<div class="mx-1 h-5 w-px bg-gray-300 dark:bg-gray-700"></div>
+
+					<button
+						type="button"
+						class="h-8 w-8 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+						onclick={zoomVerticalOut}
+						aria-label="Zoom out vertically"
+					>
+						−
+					</button>
+
+					<span class="px-1 text-xs tabular-nums">
+						{Math.round(rowHeight)} px/r
+					</span>
+
+					<button
+						type="button"
+						class="h-8 w-8 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+						onclick={zoomVerticalIn}
+						aria-label="Zoom in vertically"
+					>
+						+
+					</button>
+
+					<div class="mx-1 h-5 w-px bg-gray-300 dark:bg-gray-700"></div>
+
+					<button
+						type="button"
+						class="h-8 rounded px-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
+						onclick={() => {
+							resetZoom();
+							resetVerticalZoom();
+						}}
+					>
+						Reset
+					</button>
+				</div>
+
+				{#if selectedShow}
+					<div
+						class="absolute right-4 top-4 bottom-4 z-20 w-80 overflow-hidden rounded-xl border bg-white/95 shadow-xl backdrop-blur dark:bg-gray-900/95"
+					>
+						<SidePanel {selectedShow} onClose={() => (selectedShow = null)} />
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>
