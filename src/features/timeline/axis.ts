@@ -43,9 +43,10 @@ export function getTimeAxis(
 	const unit = getTimeUnit(pixelsPerYear);
 
 	const showYearMarkers =
-		unit === 'days' ||
-		unit === 'weeks' ||
-		unit === 'month';
+	unit === 'days' ||
+	unit === 'weeks' ||
+	unit === 'month' ||
+	unit === 'quarter';
 
 	return {
 		unit,
@@ -276,8 +277,16 @@ case 'weeks': {
 			return month;
 		}
 
-		case 'quarter':
-			return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+		case 'quarter': {
+	const monthNames = [
+		'January',
+		'April',
+		'July',
+		'October'
+	];
+
+	return `${monthNames[Math.floor(date.getUTCMonth() / 3)]}`;
+}
 
 		default:
 			return String(date.getUTCFullYear());

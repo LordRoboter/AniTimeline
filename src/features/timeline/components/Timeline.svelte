@@ -2,13 +2,40 @@
 	import { getTimeAxis } from '../axis';
 	import { assignLanes } from '../lanes';
 	import { dateToX, getTimelineRange } from '../timeline';
+	import { Search, X, Info } from '@lucide/svelte/icons';
 	import type { WatchedShow } from '../type';
 
 	import SidePanel from './SidePanel.svelte';
 	import TimelineAxis from './TimelineAxis.svelte';
 	import TimelineGraph from './TimelineGraph.svelte';
 
-	let { shows }: { shows: WatchedShow[] } = $props();
+	let {
+		shows,
+		loading = false,
+		error = null,
+		onUserSearch
+	}: {
+		shows: WatchedShow[];
+		loading?: boolean;
+		error?: unknown;
+		onUserSearch?: (username: string) => void;
+	} = $props();
+
+	let searchOpen = $state(false);
+	let username = $state('');
+
+	function toggleSearch() {
+		searchOpen = !searchOpen;
+	}
+
+	function searchUsername() {
+		const value = username.trim();
+
+		if (!value) return;
+
+		onUserSearch?.(value);
+		searchOpen = false;
+	}
 
 	const minZoomFactor = 1;
 	const maxZoomFactor = 50;
@@ -284,27 +311,23 @@
 </script>
 
 <div class="flex flex-1 h-full min-h-0 w-full flex-col gap-4">
-	{#if !range}
-		<p>No timeline data available.</p>
-	{:else}
-		<!-- Toolbar -->
-
-		<!-- Main content -->
-		<div bind:this={mainContent} class="flex min-h-0 h-full w-full min-w-0 flex-1 gap-6">
-			<!-- Timeline viewport -->
-			<div
-				bind:this={container}
-				role="region"
-				aria-label="Timeline"
-				class="timeline-scroll min-h-0 min-w-0 flex-1 cursor-grab select-none overflow-auto active:cursor-grabbing"
-				style="overscroll-behavior: contain;"
-				onwheel={handleWheel}
-				onpointerdown={handlePointerDown}
-				onpointermove={handlePointerMove}
-				onpointerup={handlePointerUp}
-				onpointercancel={handlePointerCancel}
-				onpointerleave={handlePointerUp}
-			>
+	<!-- Main content -->
+	<div bind:this={mainContent} class="flex min-h-0 h-full w-full min-w-0 flex-1 gap-6">
+		<!-- Timeline viewport -->
+		<div
+			bind:this={container}
+			role="region"
+			aria-label="Timeline"
+			class="timeline-scroll min-h-0 min-w-0 flex-1 cursor-grab select-none overflow-auto active:cursor-grabbing"
+			style="overscroll-behavior: contain;"
+			onwheel={handleWheel}
+			onpointerdown={handlePointerDown}
+			onpointermove={handlePointerMove}
+			onpointerup={handlePointerUp}
+			onpointercancel={handlePointerCancel}
+			onpointerleave={handlePointerUp}
+		>
+			{#if range}
 				<svg {width} {height} viewBox={`0 0 ${width} ${height}`} class="block max-w-none">
 					{#if axis}
 						<TimelineAxis {axis} start={range.start} end={range.end} {width} {height} />
@@ -331,9 +354,108 @@
 						{/each}
 					{/each}
 				</svg>
+			{/if}
+
+			{#if loading}
+				<div
+					class="absolute inset-0 z-30 flex items-center justify-center bg-white/40 backdrop-blur-[2px] dark:bg-gray-950/40"
+				>
+					<div
+						class="flex items-center gap-3 rounded-xl border bg-white/95 px-4 py-3 shadow-lg dark:border-gray-700 dark:bg-gray-900/95"
+					>
+						<div
+							class="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 dark:border-gray-600 dark:border-t-white"
+						></div>
+
+						<span class="text-sm font-medium"> Loading timeline... </span>
+					</div>
+				</div>
+			{/if}
+			{#if error}
+				<div class="absolute left-1/2 top-4 z-30 -translate-x-1/2">
+					<div
+						class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-lg dark:border-red-900 dark:bg-red-950/90 dark:text-red-200"
+					>
+						<span>Failed to load timeline.</span>
+
+						<button
+							type="button"
+							class="font-medium underline underline-offset-2 hover:no-underline"
+							onclick={() => onUserSearch?.(username)}
+						>
+							Retry
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if !range}
+				<div class="absolute inset-0 z-20 flex items-center justify-center p-6">
+					<div
+						class="max-w-sm rounded-xl border bg-white/95 px-5 py-4 text-center shadow-lg dark:border-gray-700 dark:bg-gray-900/95"
+					>
+						<div
+							class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+						>
+							<Info size={20} />
+						</div>
+
+						<p class="text-sm font-medium">No timeline data</p>
+
+						<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+							There is no watched media available for this user yet.
+						</p>
+					</div>
+				</div>
+			{/if}
+
+			<div class="absolute bottom-4 left-4 z-50">
+				{#if searchOpen}
+					<div
+						class="absolute bottom-12 left-0 w-72 rounded-xl border bg-white p-3 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+					>
+						<div class="mb-2 flex items-center justify-between">
+							<span class="text-sm font-medium">Search user</span>
+
+							<button
+								type="button"
+								class="rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+								aria-label="Close search"
+								onclick={() => (searchOpen = false)}
+							>
+								<X size={16} />
+							</button>
+						</div>
+
+						<form
+							onsubmit={(event) => {
+								event.preventDefault();
+								searchUsername();
+							}}
+						>
+							<div class="flex gap-2">
+								<input
+									bind:value={username}
+									autofocus
+									type="text"
+									placeholder="Username"
+									class="min-w-0 flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800"
+								/>
+
+								<button
+									type="submit"
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gray-900 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900"
+									aria-label="Search username"
+								>
+									<Search size={16} />
+								</button>
+							</div>
+						</form>
+					</div>
+				{/if}
 
 				<div
-					class="pointer-events-auto fixed bottom-4 left-4 z-10 flex items-center gap-1 rounded-lg border bg-white/90 p-1 shadow-lg backdrop-blur dark:bg-gray-900/90"
+					class="flex items-center gap-1 rounded-lg border bg-white/95 p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900/95"
 				>
 					<button
 						type="button"
@@ -395,18 +517,37 @@
 					>
 						Reset
 					</button>
-				</div>
 
-				{#if selectedShow}
-					<div
-						class="absolute right-4 top-4 bottom-4 z-20 w-80 overflow-hidden rounded-xl border bg-white/95 shadow-xl backdrop-blur dark:bg-gray-900/95"
+					<div class="mx-1 h-5 w-px bg-gray-300 dark:bg-gray-700"></div>
+
+					<button
+						type="button"
+						class="flex h-8 w-8 items-center justify-center rounded-md
+		text-gray-500 transition-colors
+		hover:bg-gray-100 hover:text-gray-900
+		dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+						class:bg-gray-100={searchOpen}
+						class:text-gray-900={searchOpen}
+						class:dark:bg-gray-800={searchOpen}
+						class:dark:text-white={searchOpen}
+						title="Search user"
+						aria-label="Search user"
+						onclick={toggleSearch}
 					>
-						<SidePanel {selectedShow} onClose={() => (selectedShow = null)} />
-					</div>
-				{/if}
+						<Search size={16} />
+					</button>
+				</div>
 			</div>
+
+			{#if selectedShow}
+				<div
+					class="absolute right-4 top-4 bottom-4 z-20 w-80 overflow-hidden rounded-xl border bg-white/95 shadow-xl backdrop-blur dark:bg-gray-900/95"
+				>
+					<SidePanel {selectedShow} onClose={() => (selectedShow = null)} />
+				</div>
+			{/if}
 		</div>
-	{/if}
+	</div>
 </div>
 
 <style>

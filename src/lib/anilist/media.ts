@@ -6,14 +6,14 @@ import type { TimelineQueryMediaListType } from "./types";
 
 const useTestData = PUBLIC_USE_TEST_DATA === 'true';
 
-export async function loadTimelineRelevantMedia(): Promise<TimelineQueryMediaListType> {
+export async function loadTimelineRelevantMedia(username: string, type: MediaType): Promise<TimelineQueryMediaListType> {
     if (useTestData) {
         return testMedia;
     }
 
     const data = await anilist(TimelineRelevantAnimeEntriesDocument, {
-        username: "LordRoboter",
-        type: MediaType.Anime
+        username: username,
+        type: type
     });
 
     return Object.values(data.MediaListCollection?.lists ?? {})
