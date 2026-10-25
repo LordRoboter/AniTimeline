@@ -17,10 +17,15 @@ export type TimeYearMarker = {
 	label: string;
 };
 
+export type NowMarker = {
+	time: number;
+}
+
 export type TimeAxis = {
 	unit: TimeUnit;
 	ticks: TimeTick[];
 	yearMarkers: TimeYearMarker[];
+	nowMarker: NowMarker;
 };
 
 const MIN_TICK_SPACING = 70;
@@ -41,6 +46,7 @@ export function getTimeAxis(
 	pixelsPerYear: number
 ): TimeAxis {
 	const unit = getTimeUnit(pixelsPerYear);
+	const now: NowMarker = {time: Date.now()};
 
 	const showYearMarkers =
 	unit === 'days' ||
@@ -53,7 +59,8 @@ export function getTimeAxis(
 		ticks: generateTicks(start, end, unit),
 		yearMarkers: showYearMarkers
 			? generateYearMarkers(start, end)
-			: []
+			: [],
+		nowMarker: now,
 	};
 }
 

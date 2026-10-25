@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { formatDate } from '../timeline';
-	import type { WatchedShow } from '../type';
+	import { formatDate } from '../../timeline';
+	import type { WatchedShow } from '../../../../lib/core/model/watched_show';
 
 	let {
 		selectedShow,

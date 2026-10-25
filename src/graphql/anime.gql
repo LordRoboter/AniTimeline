@@ -1,5 +1,5 @@
-query TimelineRelevantAnimeEntries ($username: String, $type: MediaType) {
-  MediaListCollection (userName: $username, type: $type, status_not_in: [PLANNING]) {
+query MediaUserQuery ($username: String, $type: MediaType, $statusNotIn: [MediaListStatus]) {
+  MediaListCollection (userName: $username, type: $type, status_not_in: $statusNotIn) {
     lists {
       isCustomList
       entries {
@@ -10,6 +10,10 @@ query TimelineRelevantAnimeEntries ($username: String, $type: MediaType) {
             romaji
           }
           bannerImage
+          coverImage {
+            medium
+            extraLarge
+          }
         }
         completedAt {
           day

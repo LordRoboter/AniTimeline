@@ -1,5 +1,5 @@
 import { dateToTime } from './timeline';
-import type { WatchedShow } from './type';
+import type { WatchedShow } from '../../lib/core/model/watched_show';
 
 export type TimelineLane = {
 	shows: WatchedShow[];
@@ -25,11 +25,15 @@ export function assignLanes(shows: WatchedShow[]): TimelineLane[] {
 		const lane = lanes.find((lane) => {
 			const lastShow = lane.shows[lane.shows.length - 1];
 
+			const lastStart = dateToTime(lastShow.startDate);
 			const lastEnd =
 				dateToTime(lastShow.endDate) ??
 				dateToTime(lastShow.startDate);
+			
+			// Prevent a show that was watched within a single day to be overlapped by another
+			const needsBeBigger = lastStart === null || lastEnd === null || (lastStart === lastEnd);
 
-			return lastEnd !== null && start >= lastEnd;
+			return lastEnd !== null && ((start >= lastEnd && !needsBeBigger) || (start > lastEnd && needsBeBigger));
 		});
 
 		if (lane) {

@@ -1,19 +1,20 @@
 import { PUBLIC_USE_TEST_DATA } from "$env/static/public";
 import { testMedia } from "$lib/mock/media";
-import { TimelineRelevantAnimeEntriesDocument, MediaType } from "../../../graphql/generated";
+import { MediaUserQueryDocument, MediaType, MediaListStatus,  } from "../../../graphql/generated";
 import { anilist } from "./client";
-import type { TimelineQueryMediaListType } from "./types";
+import type { MediaListType } from "./types";
 
 const useTestData = PUBLIC_USE_TEST_DATA === 'true';
 
-export async function loadTimelineRelevantMedia(username: string, type: MediaType): Promise<TimelineQueryMediaListType> {
+export async function loadCompletedMedia(username: string, type: MediaType, statusNotIn: MediaListStatus[]): Promise<MediaListType[]> {
     if (useTestData) {
         return testMedia;
     }
 
-    const data = await anilist(TimelineRelevantAnimeEntriesDocument, {
+    const data = await anilist(MediaUserQueryDocument, {
         username: username,
-        type: type
+        type: type,
+        statusNotIn: statusNotIn,
     });
 
     return Object.values(data.MediaListCollection?.lists ?? {})

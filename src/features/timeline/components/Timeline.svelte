@@ -2,30 +2,90 @@
 	import { getTimeAxis } from '../axis';
 	import { assignLanes } from '../lanes';
 	import { dateToX, getTimelineRange } from '../timeline';
-	import { Search, X, Info } from '@lucide/svelte/icons';
-	import type { WatchedShow } from '../type';
+	import { Search, X, Info, Settings, Book, RefreshCw } from '@lucide/svelte/icons';
+	import type { WatchedShow } from '../../../lib/core/model/watched_show';
 
-	import SidePanel from './SidePanel.svelte';
+	import SidePanel from './widgets/SidePanel.svelte';
 	import TimelineAxis from './TimelineAxis.svelte';
 	import TimelineGraph from './TimelineGraph.svelte';
+	import { getUserState } from '$lib/core/state/user_state_context';
+	import { defaultTimelinePreferences } from '$lib/core/settings/default';
+	import { MediaType } from '../../../../graphql/generated';
+	import SettingsWidget from './widgets/SettingsWidget.svelte';
 
 	let {
 		shows,
 		loading = false,
 		error = null,
-		onUserSearch
+		contentType = [MediaType.Anime],
+		onUserSearch,
+		onTypeChange,
+		onReload
 	}: {
 		shows: WatchedShow[];
 		loading?: boolean;
 		error?: unknown;
+		contentType?: MediaType[];
 		onUserSearch?: (username: string) => void;
+		onTypeChange: (type: MediaType[]) => void;
+		onReload: (types: MediaType[]) => void;
 	} = $props();
+
+	const userState = getUserState();
 
 	let searchOpen = $state(false);
 	let username = $state('');
 
+	let settingsOpen = $state(false);
+
+	const showNowMarker = $derived(userState.timelinePreferences?.showNowMarker ?? true);
+	const showYearMarkers = $derived(userState.timelinePreferences?.showYearMarkers ?? true);
+
+	let panelOrder: ('search' | 'settings' | 'contentType')[] = $state([]);
+	function openPanel(panel: 'search' | 'settings' | 'contentType') {
+		panelOrder = [...panelOrder.filter((p) => p !== panel), panel];
+	}
+
+	const contentTypeOptions: { label: string; types: MediaType[] }[] = [
+		{ label: 'Anime', types: [MediaType.Anime] },
+		{ label: 'Manga', types: [MediaType.Manga] },
+		{ label: 'Both', types: [MediaType.Anime, MediaType.Manga] }
+	];
+
+	function isContentTypeSelected(types: MediaType[]): boolean {
+		return contentType.length === types.length && types.every((type) => contentType.includes(type));
+	}
+
 	function toggleSearch() {
-		searchOpen = !searchOpen;
+		if (searchOpen) {
+			searchOpen = false;
+			panelOrder = panelOrder.filter((p) => p !== 'search');
+		} else {
+			searchOpen = true;
+			openPanel('search');
+		}
+	}
+
+	function toggleSettings() {
+		if (settingsOpen) {
+			settingsOpen = false;
+			panelOrder = panelOrder.filter((p) => p !== 'settings');
+		} else {
+			settingsOpen = true;
+			openPanel('settings');
+		}
+	}
+
+	let contentTypeOpen = $state(false);
+
+	function toggleContentType() {
+		if (contentTypeOpen) {
+			contentTypeOpen = false;
+			panelOrder = panelOrder.filter((p) => p !== 'contentType');
+		} else {
+			contentTypeOpen = true;
+			openPanel('contentType');
+		}
 	}
 
 	function searchUsername() {
@@ -34,7 +94,7 @@
 		if (!value) return;
 
 		onUserSearch?.(value);
-		searchOpen = false;
+		toggleSearch();
 	}
 
 	const minZoomFactor = 1;
@@ -330,7 +390,15 @@
 			{#if range}
 				<svg {width} {height} viewBox={`0 0 ${width} ${height}`} class="block max-w-none">
 					{#if axis}
-						<TimelineAxis {axis} start={range.start} end={range.end} {width} {height} />
+						<TimelineAxis
+							{axis}
+							start={range.start}
+							end={range.end}
+							{width}
+							{height}
+							{showNowMarker}
+							{showYearMarkers}
+						/>
 					{/if}
 
 					{#each lanes as lane, laneIndex (laneIndex)}
@@ -409,50 +477,108 @@
 				</div>
 			{/if}
 
-			<div class="absolute bottom-4 left-4 z-50">
-				{#if searchOpen}
-					<div
-						class="absolute bottom-12 left-0 w-72 rounded-xl border bg-white p-3 shadow-xl dark:border-gray-700 dark:bg-gray-900"
-					>
-						<div class="mb-2 flex items-center justify-between">
-							<span class="text-sm font-medium">Search user</span>
-
-							<button
-								type="button"
-								class="rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-								aria-label="Close search"
-								onclick={() => (searchOpen = false)}
-							>
-								<X size={16} />
-							</button>
-						</div>
-
-						<form
-							onsubmit={(event) => {
-								event.preventDefault();
-								searchUsername();
-							}}
+			<div class="absolute bottom-4 left-4 z-50 flex flex-col items-start gap-2">
+				{#each [...panelOrder].reverse() as panel (panel)}
+					{#if panel === 'search' && searchOpen}
+						<div
+							class="w-80 rounded-xl border bg-white p-3 shadow-xl dark:border-gray-700 dark:bg-gray-900"
 						>
-							<div class="flex gap-2">
-								<input
-									bind:value={username}
-									autofocus
-									type="text"
-									placeholder="Username"
-									class="min-w-0 flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800"
-								/>
+							<div class="mb-2 flex items-center justify-between">
+								<span class="text-sm font-medium">Search user</span>
 
 								<button
-									type="submit"
-									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gray-900 text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900"
-									aria-label="Search username"
+									type="button"
+									class="rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+									aria-label="Close search"
+									onclick={toggleSearch}
 								>
-									<Search size={16} />
+									<X size={16} />
 								</button>
 							</div>
-						</form>
-					</div>
-				{/if}
+
+							<form
+								onsubmit={(event) => {
+									event.preventDefault();
+									searchUsername();
+								}}
+							>
+								<div class="flex gap-2">
+									<input
+										bind:value={username}
+										autofocus
+										type="text"
+										placeholder="Username"
+										class="min-w-0 flex-1 rounded-md border px-3 py-1.5 text-sm outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800"
+									/>
+
+									<button
+										type="submit"
+										class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gray-900 text-white hover:bg-gray-700 dark:bg-[rgb(var(--color-blue))] dark:text-gray-900"
+										aria-label="Search username"
+									>
+										<Search size={16} />
+									</button>
+								</div>
+							</form>
+						</div>
+					{:else if panel === 'settings' && settingsOpen}
+						<SettingsWidget
+							onSettingsClose={toggleSettings}
+							{showNowMarker}
+							{showYearMarkers}
+							onShowNowMarkerChange={(value: boolean) => {
+								userState.updateTimelinePreferences({ showNowMarker: value });
+							}}
+							onShowYearMarkersChange={(value: boolean) => {
+								userState.updateTimelinePreferences({ showYearMarkers: value });
+							}}
+							onReset={() => {
+								userState.updateTimelinePreferences(defaultTimelinePreferences);
+							}}
+						/>
+					{:else if panel === 'contentType' && contentTypeOpen}
+						<div
+							class="w-80 rounded-xl border bg-white p-3 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+						>
+							<div class="mb-3 flex items-center justify-between">
+								<span class="text-sm font-medium">Content Type</span>
+
+								<button
+									type="button"
+									class="rounded-md p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+									aria-label="Close content type"
+									onclick={toggleContentType}
+								>
+									<X size={16} />
+								</button>
+							</div>
+
+							<div class="flex gap-2">
+								{#each [[MediaType.Anime], [MediaType.Manga], [MediaType.Anime, MediaType.Manga]] as type (type)}
+									{@const isSame = isContentTypeSelected(type)}
+									<button
+										type="button"
+										class="flex-1 rounded-md border px-3 py-2 text-sm capitalize transition-colors hover:cursor-pointer"
+										class:hover:bg-gray-700={!isSame}
+										class:hover:bg-blue-200={isSame}
+										class:bg-gray-900={isSame}
+										class:text-white={isSame}
+										class:dark:bg-[rgb(var(--color-blue))]={isSame}
+										class:dark:text-gray-900={isSame}
+										class:dark:border-gray-700={isSame}
+										onclick={() => onTypeChange(type)}
+									>
+										{contentTypeOptions.find(
+											(option) =>
+												option.types.length === type.length &&
+												option.types.every((type1) => type.includes(type1))
+										)?.label}
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				{/each}
 
 				<div
 					class="flex items-center gap-1 rounded-lg border bg-white/95 p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900/95"
@@ -536,6 +662,61 @@
 					>
 						<Search size={16} />
 					</button>
+
+					<button
+						type="button"
+						class="flex h-8 w-8 items-center justify-center rounded-md
+		text-gray-500 transition-colors
+		hover:bg-gray-100 hover:text-gray-900
+		dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+						class:bg-gray-100={loading}
+						class:text-gray-900={loading}
+						class:dark:bg-gray-800={loading}
+						class:dark:text-white={loading}
+						title="Reload data"
+						aria-label="Reload data"
+						onclick={() => {
+							onReload(contentType);
+						}}
+					>
+						<span class:spin={loading}>
+							<RefreshCw size={16} />
+						</span>
+					</button>
+
+					<button
+						type="button"
+						class="flex h-8 w-8 items-center justify-center rounded-md
+		text-gray-500 transition-colors
+		hover:bg-gray-100 hover:text-gray-900
+		dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+						class:bg-gray-100={contentTypeOpen}
+						class:text-gray-900={contentTypeOpen}
+						class:dark:bg-gray-800={contentTypeOpen}
+						class:dark:text-white={contentTypeOpen}
+						title="Media Type"
+						aria-label="Media Type"
+						onclick={toggleContentType}
+					>
+						<Book size={16} />
+					</button>
+
+					<button
+						type="button"
+						class="flex h-8 w-8 items-center justify-center rounded-md
+		text-gray-500 transition-colors
+		hover:bg-gray-100 hover:text-gray-900
+		dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+						class:bg-gray-100={settingsOpen}
+						class:text-gray-900={settingsOpen}
+						class:dark:bg-gray-800={settingsOpen}
+						class:dark:text-white={settingsOpen}
+						title="Settings"
+						aria-label="Settings"
+						onclick={toggleSettings}
+					>
+						<Settings size={16} />
+					</button>
 				</div>
 			</div>
 
@@ -551,19 +732,13 @@
 </div>
 
 <style>
-	.timeline-scroll {
-		scrollbar-color: #404040 transparent;
+	.spin {
+		animation: spin 1s cubic-bezier(0.08, 0.15, 0.45, 0.96) infinite;
 	}
 
-	.timeline-scroll::-webkit-scrollbar {
-		height: 4px;
-	}
-
-	.timeline-scroll::-webkit-scrollbar-thumb {
-		background: #404040;
-	}
-
-	.timeline-scroll::-webkit-scrollbar-thumb:hover {
-		background: #525252;
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

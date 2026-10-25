@@ -1,9 +1,9 @@
-import type { TimelineQueryMediaListType } from '$lib/anilist/types';
+import type { MediaListType } from '$lib/anilist/types';
 import { MediaListStatus } from '../../../graphql/generated';
-import { StatusType, type WatchedShow } from './type';
+import { StatusType, type WatchedShow } from './model/watched_show';
 
 export function mapMediaToWatchedShows(
-	result: TimelineQueryMediaListType
+	result: MediaListType[]
 ): WatchedShow[] {
 	return result.map((item) => ({
 		id: item.media?.id ?? 0,
@@ -12,6 +12,7 @@ export function mapMediaToWatchedShows(
 		startDate: item.startedAt ?? null,
 		endDate: item.completedAt ?? null,
 		bannerImage: item.media?.bannerImage ?? null,
+		coverImage: item.media?.coverImage ? {medium: item.media?.coverImage?.medium ?? null, extraLarge: item.media?.coverImage?.extraLarge ?? null} : null,
 	}));
 }
 

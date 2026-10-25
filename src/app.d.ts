@@ -3,11 +3,11 @@
 declare global {
 	namespace App {
 		interface Locals {
-			user: User | null;
+			userState: UserState | null;
 		}
 
 		interface PageData {
-			user: User | null;
+			userState: UserState | null;
 		}
 	}
 }

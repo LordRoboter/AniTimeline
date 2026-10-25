@@ -5,6 +5,7 @@ export type WatchedShow = {
 	startDate: {day: number | null, month: number | null, year: number | null} | null;
 	endDate: {day: number | null, month: number | null, year: number | null} | null;
 	bannerImage: string | null;
+	coverImage: { medium: string | null, extraLarge: string | null } | null;
 };
 
 export enum StatusType {

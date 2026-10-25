@@ -1,8 +1,24 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import type { UserState } from '$lib/core/model/user_state';
+	import { setUserState } from '$lib/core/state/user_state_context.js';
+	import { UserStateService } from '$lib/core/state/user_state_service';
 
-	let { children } = $props();
+	let {
+		data,
+		children
+	}: {
+		data: { userState: UserState };
+		children: import('svelte').Snippet;
+	} = $props();
+
+	const userState = setUserState();
+	const userStateService = new UserStateService();
+
+	$effect(() => {
+		userState.initialize(data.userState, userStateService);
+	});
 </script>
 
 <svelte:head>

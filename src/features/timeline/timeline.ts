@@ -1,4 +1,4 @@
-import type { WatchedShow } from './type';
+import type { WatchedShow } from '../../lib/core/model/watched_show';
 
 export type DateParts = {
 	day: number | null;

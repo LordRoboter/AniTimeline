@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+body {
+    scrollbar-color: #404040 transparent;
+}
+
+body::-webkit-scrollbar {
+    height: 4px;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #404040;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: #525252;
+}
+
+:root {
+    --color-blue: 61, 180, 242;
+}
